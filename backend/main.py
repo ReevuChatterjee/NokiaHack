@@ -79,7 +79,20 @@ async def get_topology():
         if not topology_file.exists():
             raise HTTPException(status_code=404, detail="Topology file not found")
         
-        return load_json_file(topology_file)
+        data = load_json_file(topology_file)
+        
+        # Fix Infinity values which are not JSON compliant when re-serializing
+        import math
+        def fix_infinity(obj):
+            if isinstance(obj, dict):
+                return {k: fix_infinity(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [fix_infinity(item) for item in obj]
+            elif isinstance(obj, float) and math.isinf(obj):
+                return None  # Convert Infinity to None (null in JSON)
+            return obj
+        
+        return fix_infinity(data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading topology: {str(e)}")
 
