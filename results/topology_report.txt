@@ -1,0 +1,105 @@
+================================================================================
+FRONTHAUL NETWORK TOPOLOGY INFERENCE REPORT
+================================================================================
+
+Analysis Date: 2026-02-03 17:27:37
+Number of Cells Analyzed: 24
+Number of Links Identified: 3
+
+METHODOLOGY
+--------------------------------------------------------------------------------
+1. Data Loading:
+   - Loaded throughput and packet statistics for all cells
+   - Processed symbol-level throughput data
+   - Calculated packet loss from RU-side statistics
+
+2. Signal Processing:
+   - Created binary loss indicators with adaptive thresholds
+   - Engineered temporal features (lags, rolling statistics)
+   - Applied time-series alignment using cross-correlation
+
+3. Correlation Analysis:
+   - Computed Pearson correlation (linear relationships)
+   - Computed Spearman correlation (rank-based, robust)
+   - Computed Jaccard similarity (event overlap)
+   - Created ensemble metric with weighted combination
+
+4. Topology Clustering:
+   - Applied hierarchical agglomerative clustering
+   - Linkage method: average
+   - Distance metric: 1 - correlation
+
+5. Validation:
+   - Statistical significance testing with Bonferroni correction
+   - Silhouette analysis for cluster quality
+   - Within vs between cluster correlation comparison
+
+INFERRED TOPOLOGY
+--------------------------------------------------------------------------------
+
+Link_A:
+  Cells: [4, 5, 12, 20]
+  Cell Count: 4
+  Total Packets Lost: 48,689
+  Average Loss Rate: 0.0005 (0.05%)
+  Peak Loss Rate: 0.3544 (35.44%)
+  Congestion Events Detected: 1,970
+  Average Throughput: 530.56 mbps
+  Peak Throughput: 3888.00 mbps
+  Estimated Utilization: 100.00%
+
+Link_B:
+  Cells: [1, 9, 17, 22]
+  Cell Count: 4
+  Total Packets Lost: 52,655
+  Average Loss Rate: 0.0006 (0.06%)
+  Peak Loss Rate: 0.3409 (34.09%)
+  Congestion Events Detected: 2,233
+  Average Throughput: 532.23 mbps
+  Peak Throughput: 3888.00 mbps
+  Estimated Utilization: 100.00%
+
+Link_C:
+  Cells: [2, 3, 6, 7, 8, 10, 11, 13, 14, 15, 16, 18, 19, 21, 23, 24]
+  Cell Count: 16
+  Total Packets Lost: 543,374
+  Average Loss Rate: 0.0015 (0.15%)
+  Peak Loss Rate: 0.3708 (37.08%)
+  Congestion Events Detected: 20,947
+  Average Throughput: 450.37 mbps
+  Peak Throughput: 3888.00 mbps
+  Estimated Utilization: 100.00%
+
+VALIDATION METRICS
+--------------------------------------------------------------------------------
+Silhouette Score: 0.283
+  Interpretation: Poor - significant cluster overlap
+
+Davies-Bouldin Index: 1.068
+  Interpretation: Fair - moderate cluster quality
+
+Within-Cluster Correlation: 0.172 ± 0.273
+Between-Cluster Correlation: -0.004 ± 0.004
+Separation Ratio: infx
+
+Per-Cluster Quality:
+  Cluster 0: size=4, avg_corr=0.537
+  Cluster 1: size=4, avg_corr=0.635
+  Cluster 2: size=16, avg_corr=0.130
+
+CONFIDENCE ASSESSMENT
+--------------------------------------------------------------------------------
+Overall Confidence: LOW
+Rationale: Significant overlap between clusters, results should be validated
+
+RECOMMENDATIONS
+--------------------------------------------------------------------------------
+1. PRIORITY: Monitor Link_A - highest utilization (100.0%)
+2. CAPACITY: Consider upgrade for Link_C - peak loss rate 37.08%
+3. OPTIMIZATION: Implement congestion-aware load balancing
+4. MONITORING: Set up real-time alerts for loss events
+5. NEXT STEPS: Use topology for Day 2 dynamic traffic optimization
+
+================================================================================
+END OF REPORT
+================================================================================
