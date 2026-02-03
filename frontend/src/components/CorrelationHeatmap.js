@@ -19,26 +19,28 @@ export default function CorrelationHeatmap({ cells, matrix }) {
     const minVal = Math.min(...flatValues);
     const maxVal = Math.max(...flatValues);
 
-    // Color interpolation function
+    // Color interpolation function (Theme: Dark -> Violet -> Cyan)
     const getColor = (value) => {
-        if (isNaN(value)) return '#1e293b';
-        if (value < threshold) return '#1e293b'; // Hide below threshold
+        if (isNaN(value)) return '#0f172a';
+        if (value < threshold) return '#0f172a';
 
         const normalized = (value - minVal) / (maxVal - minVal);
 
+        let r, g, b;
         if (normalized < 0.5) {
+            // Dark to Violet (8b5cf6 = 139, 92, 246)
             const ratio = normalized * 2;
-            const r = Math.round(59 + (255 - 59) * ratio);
-            const g = Math.round(130 + (255 - 130) * ratio);
-            const b = Math.round(246 + (255 - 246) * ratio);
-            return `rgb(${r}, ${g}, ${b})`;
+            r = Math.round(15 + (139 - 15) * ratio);
+            g = Math.round(23 + (92 - 23) * ratio);
+            b = Math.round(42 + (246 - 42) * ratio);
         } else {
+            // Violet to Cyan (06b6d4 = 6, 182, 212)
             const ratio = (normalized - 0.5) * 2;
-            const r = Math.round(255);
-            const g = Math.round(255 - 255 * ratio);
-            const b = Math.round(255 - 255 * ratio);
-            return `rgb(${r}, ${g}, ${b})`;
+            r = Math.round(139 + (6 - 139) * ratio);
+            g = Math.round(92 + (182 - 92) * ratio);
+            b = Math.round(246 + (212 - 246) * ratio);
         }
+        return `rgb(${r}, ${g}, ${b})`;
     };
 
     const cellSize = 40 * zoom;
@@ -71,23 +73,36 @@ export default function CorrelationHeatmap({ cells, matrix }) {
         return i === selectedCell || j === selectedCell;
     };
 
+    const [hoveredCell, setHoveredCell] = useState(null);
+
+    // ... (keep existing state: zoom, threshold, etc)
+
+    // Calculate top correlations for selected/hovered cell
+    const activeIndex = selectedCell !== null ? selectedCell : (hoveredCell ? hoveredCell.row : null);
+    const activeCellName = activeIndex !== null ? cells[activeIndex] : null;
+
+    const cellInsights = activeIndex !== null ? matrix[activeIndex]
+        .map((val, idx) => ({ cell: cells[idx], value: val, idx }))
+        .filter(item => item.idx !== activeIndex) // Exclude self
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5) : []; // Top 5
+
     return (
-        <div>
-            {/* Controls */}
-            <div style={{
-                display: 'flex',
-                gap: '1rem',
-                marginBottom: '1rem',
-                flexWrap: 'wrap',
-                padding: '1rem',
-                background: 'rgba(15, 23, 42, 0.6)',
-                borderRadius: '12px',
-                border: '1px solid rgba(148, 163, 184, 0.2)'
-            }}>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ color: '#94a3b8', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>
-                        🔍 Zoom: {zoom.toFixed(1)}x
-                    </label>
+        <div style={{ display: 'flex', gap: '1rem', height: '100%', alignItems: 'flex-start' }}>
+
+            {/* Main Heatmap Area */}
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                {/* Controls (Compact) */}
+                <div style={{
+                    display: 'flex',
+                    gap: '1rem',
+                    marginBottom: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(15, 23, 42, 0.4)',
+                    borderRadius: '8px',
+                    alignItems: 'center'
+                }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>🔎 Zoom:</div>
                     <input
                         type="range"
                         min="0.5"
@@ -95,175 +110,232 @@ export default function CorrelationHeatmap({ cells, matrix }) {
                         step="0.1"
                         value={zoom}
                         onChange={(e) => setZoom(parseFloat(e.target.value))}
-                        style={{ width: '100%' }}
+                        style={{ width: '100px' }}
                     />
-                </div>
-
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                    <label style={{ color: '#94a3b8', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>
-                        🎯 Threshold: {threshold.toFixed(2)}
-                    </label>
-                    <input
-                        type="range"
-                        min={minVal}
-                        max={maxVal}
-                        step="0.01"
-                        value={threshold}
-                        onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                        style={{ width: '100%' }}
-                    />
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                    <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 0.5rem' }} />
                     <button
-                        onClick={() => { setZoom(1); setPanOffset({ x: 0, y: 0 }); setSelectedCell(null); setThreshold(-1); }}
-                        className="link-button"
-                        style={{ padding: '0.5rem 1rem', height: 'fit-content' }}
+                        onClick={() => { setZoom(1); setPanOffset({ x: 0, y: 0 }); setSelectedCell(null); }}
+                        style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.8rem' }}
                     >
-                        🔄 Reset
+                        Reset View
                     </button>
                 </div>
-            </div>
 
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                💡 Click cells to highlight row/column • Drag to pan • Use sliders to zoom and filter
-            </p>
-
-            {/* Heatmap */}
-            <div
-                style={{
-                    overflowX: 'auto',
-                    marginTop: '1.5rem',
-                    cursor: isPanning ? 'grabbing' : 'grab',
-                    userSelect: 'none'
-                }}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-            >
-                <svg
-                    width={cells.length * cellSize + labelSize}
-                    height={cells.length * cellSize + labelSize}
+                {/* SVG Container */}
+                <div
                     style={{
-                        maxWidth: '100%',
-                        height: 'auto',
-                        transform: `translate(${panOffset.x}px, ${panOffset.y}px)`
+                        flex: 1,
+                        overflow: 'auto',
+                        cursor: isPanning ? 'grabbing' : 'grab',
+                        background: 'rgba(0,0,0,0.2)', // Darker backing
+                        borderRadius: '8px',
+                        position: 'relative'
                     }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={() => { handleMouseUp(); setHoveredCell(null); }}
                 >
-                    {/* Column labels */}
-                    {cells.map((cell, i) => (
-                        <text
-                            key={`col-${i}`}
-                            x={i * cellSize + labelSize + cellSize / 2}
-                            y={labelSize - 5}
-                            textAnchor="middle"
-                            fill={isHighlighted(i, selectedCell) ? '#3b82f6' : '#94a3b8'}
-                            fontSize={11 * zoom}
-                            fontWeight={isHighlighted(i, selectedCell) ? 'bold' : '500'}
-                            style={{ transition: 'all 0.2s' }}
-                        >
-                            {cell}
-                        </text>
-                    ))}
+                    <svg
+                        width={cells.length * cellSize + labelSize}
+                        height={cells.length * cellSize + labelSize}
+                        style={{
+                            transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                            transition: isPanning ? 'none' : 'transform 0.2s'
+                        }}
+                    >
+                        {/* Hover Crosshairs */}
+                        {hoveredCell && (
+                            <g pointerEvents="none">
+                                {/* Row Highlight */}
+                                <rect
+                                    x={0}
+                                    y={hoveredCell.row * cellSize + labelSize}
+                                    width={cells.length * cellSize + labelSize}
+                                    height={cellSize}
+                                    fill="rgba(59, 130, 246, 0.1)"
+                                />
+                                {/* Column Highlight */}
+                                <rect
+                                    x={hoveredCell.col * cellSize + labelSize}
+                                    y={0}
+                                    width={cellSize}
+                                    height={cells.length * cellSize + labelSize}
+                                    fill="rgba(59, 130, 246, 0.1)"
+                                />
+                            </g>
+                        )}
 
-                    {/* Row labels and cells */}
-                    {matrix.map((row, i) => (
-                        <g key={`row-${i}`}>
-                            {/* Row label */}
-                            <text
-                                x={labelSize - 5}
-                                y={i * cellSize + labelSize + cellSize / 2 + 4}
-                                textAnchor="end"
-                                fill={isHighlighted(selectedCell, i) ? '#3b82f6' : '#94a3b8'}
-                                fontSize={11 * zoom}
-                                fontWeight={isHighlighted(selectedCell, i) ? 'bold' : '500'}
-                                style={{ transition: 'all 0.2s' }}
-                            >
-                                {cells[i]}
-                            </text>
-
-                            {/* Cells */}
-                            {row.map((value, j) => {
-                                const highlighted = isHighlighted(i, j);
-                                return (
-                                    <g key={`cell-${i}-${j}`}>
-                                        <rect
-                                            x={j * cellSize + labelSize}
-                                            y={i * cellSize + labelSize}
-                                            width={cellSize}
-                                            height={cellSize}
-                                            fill={getColor(value)}
-                                            stroke={highlighted ? '#3b82f6' : 'rgba(148, 163, 184, 0.2)'}
-                                            strokeWidth={highlighted ? 3 : 1}
-                                            style={{
-                                                transition: 'all 0.2s',
-                                                cursor: 'pointer'
-                                            }}
-                                            opacity={i === j ? 0.3 : (highlighted ? 1 : 0.8)}
-                                            onClick={() => handleCellClick(i)}
-                                        />
-                                        {zoom > 1.2 && (
-                                            <text
-                                                x={j * cellSize + labelSize + cellSize / 2}
-                                                y={i * cellSize + labelSize + cellSize / 2 + 3}
-                                                textAnchor="middle"
-                                                fill="white"
-                                                fontSize={8 * zoom}
-                                                pointerEvents="none"
-                                            >
-                                                {value.toFixed(2)}
-                                            </text>
-                                        )}
-                                        <title>{`Cell ${cells[i]} - Cell ${cells[j]}: ${value.toFixed(3)}`}</title>
-                                    </g>
-                                );
-                            })}
-                        </g>
-                    ))}
-
-                    {/* Legend */}
-                    <g transform={`translate(${labelSize}, ${cells.length * cellSize + labelSize + 20})`}>
-                        <text x="0" y="0" fill="#94a3b8" fontSize={12 * zoom} fontWeight="500">
-                            Correlation:
-                        </text>
-                        <text x="0" y="15" fill="#3b82f6" fontSize={11 * zoom}>
-                            Low
-                        </text>
-                        {[...Array(10)].map((_, i) => (
-                            <rect
-                                key={i}
-                                x={30 + i * 15}
-                                y={5}
-                                width={15}
-                                height={15}
-                                fill={getColor(minVal + (maxVal - minVal) * (i / 9))}
-                                stroke="rgba(148, 163, 184, 0.2)"
-                            />
+                        {/* Cells */}
+                        {matrix.map((row, i) => (
+                            <g key={`row-${i}`}>
+                                <text
+                                    x={labelSize - 8}
+                                    y={i * cellSize + labelSize + cellSize / 2 + 4}
+                                    textAnchor="end"
+                                    fill={activeIndex === i ? '#3b82f6' : '#64748b'}
+                                    fontSize={10 * zoom}
+                                    fontWeight={activeIndex === i ? 'bold' : 'normal'}
+                                >
+                                    {cells[i]}
+                                </text>
+                                {row.map((value, j) => (
+                                    <rect
+                                        key={`cell-${i}-${j}`}
+                                        x={j * cellSize + labelSize}
+                                        y={i * cellSize + labelSize}
+                                        width={cellSize - 1}
+                                        height={cellSize - 1}
+                                        fill={getColor(value)}
+                                        rx={2 * zoom}
+                                        onMouseEnter={() => setHoveredCell({ row: i, col: j })}
+                                        onClick={(e) => { e.stopPropagation(); handleCellClick(i); }}
+                                        style={{ transition: 'fill 0.2s', cursor: 'pointer' }}
+                                        stroke={hoveredCell?.row === i && hoveredCell?.col === j ? '#fff' : 'none'}
+                                        strokeWidth={2}
+                                    />
+                                ))}
+                            </g>
                         ))}
-                        <text x={30 + 10 * 15 + 5} y="15" fill="#ef4444" fontSize={11 * zoom}>
-                            High
-                        </text>
-                    </g>
-                </svg>
+
+                        {/* Column Labels */}
+                        {cells.map((cell, i) => (
+                            <text
+                                key={`col-${i}`}
+                                x={i * cellSize + labelSize + cellSize / 2}
+                                y={labelSize - 10}
+                                textAnchor="middle"
+                                fill={activeIndex === i ? '#3b82f6' : '#64748b'} // Highlight active col too? Or just row?
+                                fontSize={10 * zoom}
+                                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                            >
+                                {cell}
+                            </text>
+                        ))}
+                        {/* Legend */}
+                        <g transform={`translate(${labelSize}, ${cells.length * cellSize + labelSize + 20})`}>
+                            <text x="0" y="0" fill="#94a3b8" fontSize={12 * zoom} fontWeight="500">
+                                Correlation:
+                            </text>
+                            <text x="0" y="15" fill="#8b5cf6" fontSize={11 * zoom}>
+                                Low
+                            </text>
+                            {[...Array(10)].map((_, i) => (
+                                <rect
+                                    key={i}
+                                    x={30 + i * 15}
+                                    y={5}
+                                    width={15}
+                                    height={15}
+                                    fill={getColor(minVal + (maxVal - minVal) * (i / 9))}
+                                    stroke="rgba(148, 163, 184, 0.2)"
+                                />
+                            ))}
+                            <text x={30 + 10 * 15 + 5} y="15" fill="#06b6d4" fontSize={11 * zoom}>
+                                High
+                            </text>
+                        </g>
+                        {/* Legend */}
+                        <g transform={`translate(${labelSize}, ${cells.length * cellSize + labelSize + 20})`}>
+                            <text x="0" y="0" fill="#94a3b8" fontSize={12 * zoom} fontWeight="500">
+                                Correlation:
+                            </text>
+                            <text x="0" y="15" fill="#8b5cf6" fontSize={11 * zoom}>
+                                Low
+                            </text>
+                            {[...Array(10)].map((_, i) => (
+                                <rect
+                                    key={i}
+                                    x={30 + i * 15}
+                                    y={5}
+                                    width={15}
+                                    height={15}
+                                    fill={getColor(minVal + (maxVal - minVal) * (i / 9))}
+                                    stroke="rgba(148, 163, 184, 0.2)"
+                                />
+                            ))}
+                            <text x={30 + 10 * 15 + 5} y="15" fill="#06b6d4" fontSize={11 * zoom}>
+                                High
+                            </text>
+                        </g>
+                    </svg>
+                </div>
             </div>
 
-            {selectedCell !== null && (
-                <div style={{
-                    marginTop: '1rem',
-                    padding: '1rem',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '8px'
-                }}>
-                    <p style={{ color: '#3b82f6', fontWeight: 'bold' }}>
-                        Selected: Cell {cells[selectedCell]}
-                    </p>
-                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                        Viewing correlations with all other cells
+            {/* Insights Side Panel */}
+            <div style={{
+                width: '280px',
+                background: 'rgba(30, 41, 59, 0.8)',
+                borderLeft: '1px solid rgba(255,255,255,0.1)',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '8px'
+            }}>
+                <div style={{ marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', color: '#f8fafc' }}>
+                        📊 Correlation Details
+                    </h3>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+                        {activeCellName ? `Analysis for ${activeCellName}` : 'Hover over a cell'}
                     </p>
                 </div>
-            )}
+
+                {activeCellName ? (
+                    <div className="fade-in">
+                        <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>Top Correlations:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {cellInsights.map((item, idx) => (
+                                <div key={idx} style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '0.5rem',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    borderRadius: '6px'
+                                }}>
+                                    <span style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>{item.cell}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{
+                                            width: '60px',
+                                            height: '6px',
+                                            background: '#334155',
+                                            borderRadius: '3px',
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                width: `${Math.abs(item.value) * 100}%`,
+                                                height: '100%',
+                                                background: item.value > 0.7 ? '#06b6d4' : item.value > 0.4 ? '#8b5cf6' : '#64748b'
+                                            }} />
+                                        </div>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', width: '35px', textAlign: 'right' }}>
+                                            {item.value.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ marginTop: '1.5rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                💡 <strong>Insight</strong>
+                            </div>
+                            <p style={{ fontSize: '0.8rem', margin: 0, color: '#bfdbfe', lineHeight: '1.4' }}>
+                                {cellInsights[0]?.value > 0.8
+                                    ? <>{activeCellName} is <strong>highly synchronized</strong> with {cellInsights[0].cell}. Consider optimizing them as a cluster.</>
+                                    : <>{activeCellName} shows independent traffic patterns. No strong dependencies detected.</>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#64748b', textAlign: 'center' }}>
+                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>👆</div>
+                        <p style={{ fontSize: '0.9rem' }}>Hover or click a cell to view detailed correlation analysis.</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

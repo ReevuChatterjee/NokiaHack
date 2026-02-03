@@ -3,7 +3,7 @@
   --bg-panel: rgba(30, 41, 59, 0.7);
   --bg-panel-hover: rgba(51, 65, 85, 0.8);
   --accent-primary: #06b6d4;
-  /* Cyan for tech feel */
+  /* Cyan */
   --accent-secondary: #8b5cf6;
   /* Violet */
   --accent-success: #10b981;
@@ -27,6 +27,7 @@
 
 body {
   background-color: var(--bg-dark);
+  /* Subtle mesh gradient, less intrusive */
   background-image:
     radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.05) 0%, transparent 20%),
     radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 20%);
@@ -36,9 +37,9 @@ body {
   overflow-x: hidden;
 }
 
-/* Dashboard Grid Layout */
+/* Dashboard Grid Layout (12 Columns - Standard) */
 .dashboard-container {
-  max-width: 1800px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 1.5rem;
   display: grid;
@@ -58,6 +59,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow: var(--glass-shadow);
+  margin-bottom: 0.5rem;
 }
 
 .header-title h1 {
@@ -100,6 +102,7 @@ body {
 .kpi-card:hover {
   transform: translateY(-2px);
   border-color: var(--accent-primary);
+  background: var(--bg-panel-hover);
 }
 
 .kpi-label {
@@ -107,6 +110,7 @@ body {
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .kpi-value {
@@ -141,32 +145,42 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: box-shadow 0.3s;
 }
 
-/* Grid Spans */
+.dashboard-panel:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Grid Spans & Heights (Responsive) */
 .panel-topology {
   grid-column: span 8;
-  height: 750px;
+  height: 600px;
+  /* Reduced from 750px */
+  min-height: 500px;
 }
 
 .panel-insights {
   grid-column: span 4;
-  height: 750px;
+  height: 600px;
+  /* Aligned with Topology */
+  min-height: 500px;
 }
 
 .panel-correlation {
   grid-column: span 6;
-  height: 850px;
+  height: 550px;
 }
 
 .panel-traffic {
   grid-column: span 6;
-  height: 700px;
+  height: 550px;
 }
 
 .panel-capacity {
   grid-column: span 12;
   height: auto;
+  min-height: 300px;
 }
 
 @media (max-width: 1400px) {
@@ -176,7 +190,9 @@ body {
   .panel-correlation,
   .panel-traffic {
     grid-column: span 12;
+    /* Stack on smaller screens */
     height: auto;
+    min-height: 500px;
   }
 }
 
@@ -198,27 +214,19 @@ body {
   gap: 0.5rem;
 }
 
-.panel-title svg {
-  color: var(--accent-primary);
-}
-
 /* Controls */
-.control-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-icon {
+.glass-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  padding: 0.5rem;
+  padding: 0.5rem 1rem;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 0.85rem;
 }
 
-.btn-icon:hover {
+.glass-btn:hover {
   background: var(--accent-primary);
   color: #fff;
 }
@@ -250,30 +258,6 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Table Override */
-table {
-  background: transparent;
-}
-
-th {
-  background: rgba(15, 23, 42, 0.8);
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  padding: 1.25rem 1rem;
-}
-
-td {
-  border-bottom: 1px solid var(--border-color);
-  font-size: 0.9rem;
-  padding: 1rem;
-}
-
-tr:hover td {
-  background: rgba(6, 182, 212, 0.05);
-}
-
 .badge {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
@@ -282,28 +266,12 @@ tr:hover td {
   letter-spacing: 0.05em;
 }
 
-/* Status Colors */
-.status-good {
-  color: var(--accent-success);
-}
-
-.status-warn {
-  color: var(--accent-warning);
-}
-
-.status-bad {
-  color: var(--accent-danger);
-}
-
-/* Loading/Error */
-.loading-overlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  gap: 1rem;
-  color: var(--accent-primary);
+/* Utilities */
+.text-gradient {
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Scrollbar */
@@ -319,8 +287,4 @@ tr:hover td {
 ::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
 }

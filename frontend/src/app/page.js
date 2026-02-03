@@ -89,97 +89,129 @@ export default function Home() {
         }, 0) / capacitySummary.length * 100
         : 0;
 
+    // Variant for container stagger
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.15,
+                delayChildren: 0.2
+            }
+        }
+    };
+
+    // Variant for item pop-in
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0, scale: 0.95 },
+        visible: {
+            y: 0,
+            opacity: 1,
+            scale: 1,
+            transition: { type: 'spring', stiffness: 100 }
+        }
+    };
+
     return (
-        <div className="dashboard-container">
+        <motion.div
+            className="dashboard-container"
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+        >
             {/* Header */}
-            <header className="header-section">
+            <motion.header className="header-section" variants={itemVariants}>
                 <div className="header-title">
-                    <h1>Network Optimization Console</h1>
-                    <p>Intelligent Fronthaul Analytics</p>
+                    <h1>NOKIA <span style={{ fontWeight: 300, color: 'var(--text-secondary)' }}>NOC</span></h1>
+                    <p>Intelligent Fronthaul Optimization</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ width: 8, height: 8, background: '#10b981', borderRadius: '50%', boxShadow: '0 0 8px #10b981' }}></span>
-                        SYSTEM ONLINE
+                    <div className="glass-btn" onClick={() => window.location.reload()}>
+                        🔄 Refresh System
+                    </div>
+                    <div className="badge" style={{
+                        background: 'rgba(0, 242, 234, 0.1)',
+                        color: 'var(--accent-primary)',
+                        border: '1px solid rgba(0, 242, 234, 0.3)',
+                        padding: '0.5rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                    }}>
+                        <span className="pulsing-dot" style={{
+                            width: 8, height: 8, background: 'var(--accent-primary)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-primary)'
+                        }}></span>
+                        LIVE MONITORING
                     </div>
                 </div>
-            </header>
+            </motion.header>
 
             {/* KPI Cards */}
-            <div className="kpi-grid">
+            <motion.div className="kpi-grid" variants={itemVariants}>
                 <div className="kpi-card">
                     <span className="kpi-label">Active Links</span>
                     <div className="kpi-value">{totalLinks}</div>
-                    <div className="kpi-trend trend-up">↑ Monitor Active</div>
+                    <div style={{ color: 'var(--accent-success)', fontSize: '0.9rem' }}>▲ Optimal Performance</div>
                 </div>
                 <div className="kpi-card">
                     <span className="kpi-label">Monitored Cells</span>
                     <div className="kpi-value">{totalCells}</div>
-                    <div className="kpi-trend">All cells operational</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>• 100% Signal Coverage</div>
                 </div>
                 <div className="kpi-card">
-                    <span className="kpi-label">Avg Link Utilization</span>
-                    <div className="kpi-value">{avgUtilization.toFixed(1)}%</div>
-                    <div className="kpi-trend trend-up">Peak Load Analysis</div>
+                    <span className="kpi-label">Network Load</span>
+                    <div className="kpi-value" style={{ color: avgUtilization > 80 ? 'var(--accent-secondary)' : 'var(--accent-primary)' }}>
+                        {avgUtilization.toFixed(1)}%
+                    </div>
+                    <div style={{ color: 'var(--accent-primary)', fontSize: '0.9rem' }}>~ Stable Throughput</div>
                 </div>
                 <div className="kpi-card">
-                    <span className="kpi-label">Optimization Status</span>
-                    <div className="kpi-value" style={{ color: '#06b6d4' }}>Active</div>
-                    <div className="kpi-trend">Buffering Logic Enabled</div>
+                    <span className="kpi-label">AI Status</span>
+                    <div className="kpi-value text-gradient">ACTIVE</div>
+                    <div style={{ color: 'var(--accent-tertiary)', fontSize: '0.9rem' }}>✦ Predictive Logic On</div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Panel 1: Topology Map */}
-            <motion.div
-                className="dashboard-panel panel-topology"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-            >
-                <div className="panel-header">
+            <motion.div className="dashboard-panel panel-topology" variants={itemVariants}>
+                <div className="panel-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                     <div className="panel-title">
-                        🌐 Network Topology
-                    </div>
-                    <div>
-                        {/* Placeholder for toolbar */}
+                        🌐 Live Topology
                     </div>
                 </div>
                 {topology ? <NetworkGraph2D topology={topology} /> : <LoadingSkeleton type="chart" />}
             </motion.div>
 
             {/* Panel 2: Insights & Actions */}
-            <div className="dashboard-panel panel-insights">
+            <motion.div className="dashboard-panel panel-insights" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
                         🧠 AI Recommendations
                     </div>
                 </div>
                 {capacitySummary && <InsightsGenerator capacityData={capacitySummary} />}
-            </div>
+            </motion.div>
 
             {/* Panel 3: Correlation Analysis */}
-            <motion.div
-                className="dashboard-panel panel-correlation"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-            >
+            <motion.div className="dashboard-panel panel-correlation" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
-                        🔗 Correlation Analysis
+                        🔗 Correlation Matrix
                     </div>
                     <div className="tab-group">
                         <button
                             className={`tab-btn ${correlationView === 'network' ? 'active' : ''}`}
                             onClick={() => setCorrelationView('network')}
+                            style={{ color: correlationView === 'network' ? '#000' : 'var(--text-secondary)' }}
                         >
                             Graph
                         </button>
                         <button
                             className={`tab-btn ${correlationView === 'heatmap' ? 'active' : ''}`}
                             onClick={() => setCorrelationView('heatmap')}
+                            style={{ color: correlationView === 'heatmap' ? '#000' : 'var(--text-secondary)' }}
                         >
-                            Matrix
+                            Heatmap
                         </button>
                     </div>
                 </div>
@@ -195,12 +227,7 @@ export default function Home() {
             </motion.div>
 
             {/* Panel 4: Traffic Analytics */}
-            <motion.div
-                className="dashboard-panel panel-traffic"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-            >
+            <motion.div className="dashboard-panel panel-traffic" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
                         📊 Traffic Load
@@ -221,12 +248,7 @@ export default function Home() {
             </motion.div>
 
             {/* Panel 5: Capacity Table */}
-            <motion.div
-                className="dashboard-panel panel-capacity"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-            >
+            <motion.div className="dashboard-panel panel-capacity" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
                         📋 Capacity Planning
@@ -234,6 +256,6 @@ export default function Home() {
                 </div>
                 {capacitySummary && <CapacityTable data={capacitySummary} />}
             </motion.div>
-        </div>
+        </motion.div>
     );
 }
