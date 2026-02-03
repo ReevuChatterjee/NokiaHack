@@ -37,9 +37,10 @@ export default function CorrelationNetwork({ cells, matrix }) {
         if (!canvasRef.current || !wrapperRef.current || !cells) return;
 
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
         const width = wrapperRef.current.clientWidth;
-        const height = 600;
+        const height = wrapperRef.current.clientHeight;
+
+        const ctx = canvas.getContext('2d');
 
         // Setup high-DPI canvas
         const dpr = window.devicePixelRatio || 1;
@@ -98,7 +99,11 @@ export default function CorrelationNetwork({ cells, matrix }) {
                     if (val >= 0.9) color = `rgba(239, 68, 68, ${opacity})`;   // Red
                     else if (val >= 0.8) color = `rgba(249, 115, 22, ${opacity})`; // Orange
                     else if (val >= 0.7) color = `rgba(234, 179, 8, ${opacity})`;  // Yellow
-                    else color = `rgba(59, 130, 246, ${opacity})`;                 // Blue
+                    else color = `rgba(59, 130, 246, ${opacity})`;                 // Blue (Default Theme)
+
+                    // Theme Override (Cyan/Violet)
+                    if (val >= 0.9) color = `rgba(6, 182, 212, ${opacity})`;    // Cyan (High)
+                    else if (val >= 0.7) color = `rgba(139, 92, 246, ${opacity})`; // Violet (Med)
 
                     ctx.strokeStyle = color;
                     ctx.lineWidth = selectedCell && opacity > 0.5 ? 2 : 1;
@@ -112,7 +117,6 @@ export default function CorrelationNetwork({ cells, matrix }) {
         // 4. Draw Nodes
         nodes.forEach((node) => {
             const isSelected = selectedCell === node.id;
-            const isRelated = selectedCell && matrix[nodes.find(n => n.id === selectedCell).index][node.index] >= threshold;
 
             // Dim logic
             let alpha = 1;
@@ -127,7 +131,7 @@ export default function CorrelationNetwork({ cells, matrix }) {
             // Dot
             ctx.beginPath();
             ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = isSelected ? '#3b82f6' : `rgba(139, 92, 246, ${alpha})`;
+            ctx.fillStyle = isSelected ? '#06b6d4' : `rgba(139, 92, 246, ${alpha})`;
             ctx.fill();
 
             ctx.strokeStyle = '#fff';
@@ -146,7 +150,7 @@ export default function CorrelationNetwork({ cells, matrix }) {
             ctx.restore();
         });
 
-    }, [cells, matrix, threshold, selectedCell]);
+    }, [cells, matrix, threshold, selectedCell]); // Ideally listen to resize, but for now init is fine
 
     // Handle Canvas Click for Selection
     const handleCanvasClick = (e) => {
@@ -154,7 +158,7 @@ export default function CorrelationNetwork({ cells, matrix }) {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         const width = rect.width;
-        const height = 600; // Fixed visual height
+        const height = rect.height;
         const centerX = width / 2;
         const centerY = height / 2;
         const radius = Math.min(width, height) * 0.35;
@@ -176,18 +180,20 @@ export default function CorrelationNetwork({ cells, matrix }) {
     };
 
     return (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Controls */}
             <div style={{
-                padding: '1rem',
+                padding: '0.75rem',
                 background: 'rgba(15, 23, 42, 0.6)',
                 borderRadius: '12px',
                 border: '1px solid rgba(148, 163, 184, 0.2)',
-                marginBottom: '1rem'
+                marginBottom: '0.5rem',
+                flexShrink: 0
             }}>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ color: '#94a3b8', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>
-                        🎯 Min Correlation: {threshold.toFixed(2)} (showing {stats.linkCount} connections)
+                <div style={{ marginBottom: '0.5rem' }}>
+                    <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span>🎯 Min Strength: {threshold.toFixed(2)}</span>
+                        <span>{stats.linkCount} Links</span>
                     </label>
                     <input
                         type="range"
@@ -199,33 +205,21 @@ export default function CorrelationNetwork({ cells, matrix }) {
                         style={{ width: '100%' }}
                     />
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem' }}>
-                    <div className="stat-card" style={{ padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Links</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#3b82f6' }}>{stats.linkCount}</div>
-                    </div>
-                    <div className="stat-card" style={{ padding: '0.5rem', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid #8b5cf6', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Avg</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#8b5cf6' }}>{stats.avgCorrelation.toFixed(2)}</div>
-                    </div>
-                </div>
             </div>
 
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                Click any cell node to isolate its connections.
+            <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: '0.5rem', flexShrink: 0, textAlign: 'center' }}>
+                Select a node to filter connections.
             </p>
 
             {/* Network Canvas */}
-            <div ref={wrapperRef} style={{ width: '100%', height: '600px', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.2)', cursor: 'pointer', overflow: 'hidden' }}>
+            <div ref={wrapperRef} style={{ flex: 1, width: '100%', minHeight: 0, background: 'rgba(15, 23, 42, 0.4)', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.2)', cursor: 'pointer', overflow: 'hidden' }}>
                 <canvas ref={canvasRef} onClick={handleCanvasClick} />
             </div>
 
             {/* Legend */}
-            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#ef4444', borderRadius: '50%' }} /><span>High</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#eab308', borderRadius: '50%' }} /><span>Med</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: '50%' }} /><span>Low</span></div>
+            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 8, height: 8, background: '#06b6d4', borderRadius: '50%' }} /><span style={{ fontSize: '0.8rem' }}>High</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 8, height: 8, background: '#8b5cf6', borderRadius: '50%' }} /><span style={{ fontSize: '0.8rem' }}>Med</span></div>
             </div>
 
         </div>
