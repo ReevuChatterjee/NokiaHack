@@ -5,6 +5,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 export default function CorrelationNetwork({ cells, matrix }) {
     const [threshold, setThreshold] = useState(0.1);
     const [selectedCell, setSelectedCell] = useState(null);
+    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
     const canvasRef = useRef(null);
     const wrapperRef = useRef(null);
 
@@ -32,13 +33,23 @@ export default function CorrelationNetwork({ cells, matrix }) {
         };
     }, [cells, matrix, threshold]);
 
+    // Resize Observer
+    useEffect(() => {
+        if (!wrapperRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            const { width, height } = entries[0].contentRect;
+            setDimensions({ width, height });
+        });
+        observer.observe(wrapperRef.current);
+        return () => observer.disconnect();
+    }, []);
+
     // Main drawing logic
     useEffect(() => {
-        if (!canvasRef.current || !wrapperRef.current || !cells) return;
+        if (!canvasRef.current || !dimensions.width || !dimensions.height || !cells) return;
 
         const canvas = canvasRef.current;
-        const width = wrapperRef.current.clientWidth;
-        const height = wrapperRef.current.clientHeight;
+        const { width, height } = dimensions;
 
         const ctx = canvas.getContext('2d');
 
@@ -46,8 +57,7 @@ export default function CorrelationNetwork({ cells, matrix }) {
         const dpr = window.devicePixelRatio || 1;
         canvas.width = width * dpr;
         canvas.height = height * dpr;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
+        // canvas.style.width/height is handled by CSS (width: 100%) to avoid ResizeObserver loop
         ctx.scale(dpr, dpr);
 
         // Layout Config
@@ -150,7 +160,7 @@ export default function CorrelationNetwork({ cells, matrix }) {
             ctx.restore();
         });
 
-    }, [cells, matrix, threshold, selectedCell]); // Ideally listen to resize, but for now init is fine
+    }, [cells, matrix, threshold, selectedCell, dimensions]);
 
     // Handle Canvas Click for Selection
     const handleCanvasClick = (e) => {
@@ -212,8 +222,8 @@ export default function CorrelationNetwork({ cells, matrix }) {
             </p>
 
             {/* Network Canvas */}
-            <div ref={wrapperRef} style={{ flex: 1, width: '100%', minHeight: 0, background: 'rgba(15, 23, 42, 0.4)', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.2)', cursor: 'pointer', overflow: 'hidden' }}>
-                <canvas ref={canvasRef} onClick={handleCanvasClick} />
+            <div ref={wrapperRef} style={{ flex: 1, width: '100%', minHeight: '200px', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.2)', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}>
+                <canvas ref={canvasRef} onClick={handleCanvasClick} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
             </div>
 
             {/* Legend */}

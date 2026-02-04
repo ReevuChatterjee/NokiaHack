@@ -169,12 +169,14 @@ body {
 
 .panel-correlation {
   grid-column: span 6;
-  height: 550px;
+  height: auto;
+  min-height: 500px;
 }
 
 .panel-traffic {
   grid-column: span 6;
-  height: 550px;
+  height: auto;
+  min-height: 500px;
 }
 
 .panel-capacity {
@@ -190,9 +192,60 @@ body {
   .panel-correlation,
   .panel-traffic {
     grid-column: span 12;
-    /* Stack on smaller screens */
     height: auto;
     min-height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+
+  /* Mobile Layout Overrides */
+  .dashboard-container {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .header-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .header-section>div {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    /* Stack cards */
+    gap: 1rem;
+  }
+
+  .panel-topology,
+  .panel-insights,
+  .panel-correlation,
+  .panel-traffic,
+  .panel-capacity {
+    min-height: 250px;
+    /* Compact min-height for mobile */
+    padding: 1rem;
+  }
+
+  /* Specific rule for Traffic Panel on Mobile - needs more space for controls */
+  .panel-traffic {
+    min-height: 400px;
+    height: auto !important;
+  }
+
+  /* Specific adjustment for chat/insights to be usable on mobile */
+  .panel-insights {
+    height: 600px;
+    /* Keep height for chat */
+    max-height: 80vh;
   }
 }
 

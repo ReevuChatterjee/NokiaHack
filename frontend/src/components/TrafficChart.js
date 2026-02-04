@@ -262,7 +262,7 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
             )}
 
             {/* Chart */}
-            <div style={{ width: '100%', flex: 1, minHeight: 200, position: 'relative' }}>
+            <div style={{ width: '100%', height: '300px', position: 'relative' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={compareMode && comparisonData ? comparisonData : filteredData}

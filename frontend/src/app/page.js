@@ -142,7 +142,7 @@ export default function Home() {
                     <h1>NOKIA <span style={{ fontWeight: 300, color: 'var(--text-secondary)' }}>NOC</span></h1>
                     <p>Intelligent Fronthaul Optimization</p>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <label className="glass-btn" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
                         {uploading ? 'Uploading...' : 'Upload Data'}
                         <input
