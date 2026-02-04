@@ -1,19 +1,20 @@
-'use client';
+import React, { useEffect, useRef, useState, forwardRef } from 'react';
+import ForceGraph2D from 'react-force-graph-2d';
 
-import React, { useEffect, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
-
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
-    ssr: false,
-    loading: () => <div className="loading">Loading network visualization...</div>
-});
-
-export default function NetworkGraph2D({ topology }) {
+const NetworkGraph2D = forwardRef(({ topology }, ref) => {
     const fgRef = useRef();
     const [graphData, setGraphData] = useState({ nodes: [], links: [] });
     const [highlightNodes, setHighlightNodes] = useState(new Set());
     const [highlightLinks, setHighlightLinks] = useState(new Set());
     const [selectedNode, setSelectedNode] = useState(null);
+
+    // Consistent color generator based on string hash
+    const getLinkColor = (id) => {
+        const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+        return colors[Math.abs(hash) % colors.length];
+    };
 
     useEffect(() => {
         if (!topology || !topology.links) return;
@@ -26,16 +27,12 @@ export default function NetworkGraph2D({ topology }) {
         const CELL_DISTANCE = 50; // Distance of cells from relative hub
 
         const linkKeys = Object.keys(topology.links);
-        const linkColors = {
-            'Link_A': '#3b82f6', // Blue
-            'Link_B': '#8b5cf6', // Purple
-            'Link_C': '#10b981'  // Green
-        };
 
         linkKeys.forEach((linkId, i) => {
             const linkData = topology.links[linkId];
+            const color = getLinkColor(linkId);
 
-            // 1. Position Link Hubs in a Polygon/Triangle around (0,0)
+            // 1. Position Link Hubs in a Polygon around (0,0)
             const hubAngle = (i * 2 * Math.PI) / linkKeys.length - (Math.PI / 2);
             const hubX = Math.cos(hubAngle) * HUB_DISTANCE;
             const hubY = Math.sin(hubAngle) * HUB_DISTANCE;
@@ -48,7 +45,7 @@ export default function NetworkGraph2D({ topology }) {
                 type: 'link',
                 cells: linkData.cells,
                 val: 30,
-                color: linkColors[linkId] || '#64748b',
+                color: color,
                 avgThroughput: linkData.avg_throughput_mbps,
                 peakThroughput: linkData.peak_throughput_mbps,
                 fx: hubX,
@@ -57,47 +54,50 @@ export default function NetworkGraph2D({ topology }) {
                 y: hubY
             });
 
-            // 2. Position Cells in a circle around their Hub
-            linkData.cells.forEach((cellId, j) => {
-                // Ensure cellId is treated as a string/number correctly
-                const cellLabel = String(cellId);
-                const cellNodeId = `Cell_${cellLabel}`;
-                const totalCells = linkData.cells.length;
-                const cellAngle = (j * 2 * Math.PI) / totalCells;
+            // 2. Position Cells around their Hub
+            if (linkData.cells) {
+                linkData.cells.forEach((cellId, j) => {
+                    const cellLabel = String(cellId);
+                    const cellNodeId = `Cell_${cellLabel}_${linkId}`; // Unique ID
+                    const totalCells = linkData.cells.length;
+                    const cellAngle = (j * 2 * Math.PI) / totalCells;
 
-                const cellX = hubX + Math.cos(cellAngle) * CELL_DISTANCE;
-                const cellY = hubY + Math.sin(cellAngle) * CELL_DISTANCE;
+                    const cellX = hubX + Math.cos(cellAngle) * CELL_DISTANCE;
+                    const cellY = hubY + Math.sin(cellAngle) * CELL_DISTANCE;
 
-                nodes.push({
-                    id: cellNodeId,
-                    name: `Cell ${cellLabel}`,
-                    label: cellLabel, // Simple label for the node
-                    type: 'cell',
-                    val: 10,
-                    color: linkColors[linkId] || '#64748b',
-                    parentId: linkId,
-                    fx: cellX,
-                    fy: cellY,
-                    x: cellX,
-                    y: cellY
+                    nodes.push({
+                        id: cellNodeId,
+                        name: `Cell ${cellLabel}`,
+                        label: cellLabel,
+                        type: 'cell',
+                        val: 10,
+                        color: color,
+                        parentId: linkId,
+                        fx: cellX,
+                        fy: cellY,
+                        x: cellX,
+                        y: cellY
+                    });
+
+                    linksArray.push({
+                        source: linkId,
+                        target: cellNodeId,
+                        color: color,
+                        width: 2
+                    });
                 });
-
-                linksArray.push({
-                    source: linkId,
-                    target: cellNodeId,
-                    color: linkColors[linkId] || '#64748b',
-                    width: 2
-                });
-            });
+            }
         });
 
         setGraphData({ nodes, links: linksArray });
 
+        // Initial placement boost
         setTimeout(() => {
             if (fgRef.current) {
-                fgRef.current.zoomToFit(400, 50);
+                fgRef.current.zoomToFit(400, 100);
+                fgRef.current.centerAt(0, 0, 600);
             }
-        }, 100);
+        }, 500); // Increased timeout for reliable DOM measurements
     }, [topology]);
 
     const handleNodeClick = (node) => {
@@ -106,14 +106,11 @@ export default function NetworkGraph2D({ topology }) {
         const connectedNodes = new Set();
         const connectedLinks = new Set();
 
-        // Safety check for ID accesses
         if (node.type === 'link') {
             connectedNodes.add(node.id);
             graphData.links.forEach(link => {
-                // Handle both object reference and string ID cases
                 const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
                 const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-
                 if (sourceId === node.id) {
                     connectedNodes.add(targetId);
                     connectedLinks.add(link);
@@ -122,11 +119,8 @@ export default function NetworkGraph2D({ topology }) {
         } else {
             connectedNodes.add(node.id);
             if (node.parentId) connectedNodes.add(node.parentId);
-
             graphData.links.forEach(link => {
-                const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
                 const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-
                 if (targetId === node.id) {
                     connectedLinks.add(link);
                 }
@@ -181,6 +175,7 @@ export default function NetworkGraph2D({ topology }) {
                 ctx.fillText(node.label, node.x, node.y);
             }
         }
+        ctx.globalAlpha = 1.0;
     };
 
     const renderBackground = (ctx, globalScale) => {
@@ -188,17 +183,17 @@ export default function NetworkGraph2D({ topology }) {
         const HUB_DISTANCE = 180;
 
         linkKeys.forEach((linkId, i) => {
-            const linkColors = { 'Link_A': '#3b82f6', 'Link_B': '#8b5cf6', 'Link_C': '#10b981' };
+            const color = getLinkColor(linkId);
             const hubAngle = (i * 2 * Math.PI) / linkKeys.length - (Math.PI / 2);
             const hubX = Math.cos(hubAngle) * HUB_DISTANCE;
             const hubY = Math.sin(hubAngle) * HUB_DISTANCE;
 
             ctx.beginPath();
             ctx.arc(hubX, hubY, 80, 0, 2 * Math.PI);
-            ctx.fillStyle = linkColors[linkId];
+            ctx.fillStyle = color;
             ctx.globalAlpha = 0.05;
             ctx.fill();
-            ctx.strokeStyle = linkColors[linkId];
+            ctx.strokeStyle = color;
             ctx.globalAlpha = 0.2;
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
@@ -209,7 +204,7 @@ export default function NetworkGraph2D({ topology }) {
     };
 
     return (
-        <div style={{
+        <div ref={ref} style={{
             width: '100%',
             height: '600px',
             background: 'rgba(15, 23, 42, 0.4)',
@@ -241,8 +236,8 @@ export default function NetworkGraph2D({ topology }) {
                 nodeRelSize={6}
                 nodeCanvasObject={paintNode}
                 onRenderFramePre={renderBackground}
-                linkWidth={link => highlightLinks.has(link) ? 3 : 1.5}
-                linkColor={link => (!highlightLinks.size || highlightLinks.has(link)) ? link.color : `${link.color}20`}
+                linkWidth={link => (highlightLinks.size === 0 || highlightLinks.has(link)) ? 2 : 1}
+                linkColor={link => (highlightLinks.size === 0 || highlightLinks.has(link)) ? link.color : `${link.color}20`}
                 onNodeClick={handleNodeClick}
                 onBackgroundClick={handleBackgroundClick}
                 backgroundColor="rgba(0,0,0,0)"
@@ -253,4 +248,7 @@ export default function NetworkGraph2D({ topology }) {
             />
         </div>
     );
-}
+});
+
+NetworkGraph2D.displayName = 'NetworkGraph2D';
+export default NetworkGraph2D;

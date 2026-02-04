@@ -1,0 +1,4 @@
+link_id,avg_gbps,peak_gbps,p95_gbps,capacity_no_buffer_gbps,capacity_with_buffer_gbps
+Link_A,4245.3066,21600.0,10368.0,21600.0,13823.7529
+Link_B,4256.6856,24192.0,13824.0,24192.0,17279.1764
+Link_C,14411.8932,63072.0,31968.0,63072.0,41469.035

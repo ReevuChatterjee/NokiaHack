@@ -71,11 +71,18 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
         };
     }, [filteredData]);
 
-    const linkColors = {
-        'Link_A': '#3b82f6',
-        'Link_B': '#8b5cf6',
-        'Link_C': '#10b981'
+    // Consistent color generator based on string hash
+    const getLinkColor = (id) => {
+        const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
+        let hash = 0;
+        if (id) for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+        return colors[Math.abs(hash) % colors.length];
     };
+
+    // Sync selectedLinks when linkId prop changes
+    React.useEffect(() => {
+        setSelectedLinks([linkId]);
+    }, [linkId]);
 
     const toggleLink = (link) => {
         setSelectedLinks(prev =>
@@ -110,7 +117,7 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                     </label>
                     {compareMode && allLinksData && (
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-                            {['Link_A', 'Link_B', 'Link_C'].map(link => (
+                            {Object.keys(allLinksData).map(link => (
                                 <button
                                     key={link}
                                     onClick={() => toggleLink(link)}
@@ -118,8 +125,8 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                                     style={{
                                         padding: '0.2rem 0.5rem',
                                         fontSize: '0.75rem',
-                                        background: selectedLinks.includes(link) ? linkColors[link] : 'rgba(15, 23, 42, 0.6)',
-                                        borderColor: selectedLinks.includes(link) ? linkColors[link] : 'rgba(148, 163, 184, 0.2)'
+                                        background: selectedLinks.includes(link) ? getLinkColor(link) : 'rgba(15, 23, 42, 0.6)',
+                                        borderColor: selectedLinks.includes(link) ? getLinkColor(link) : 'rgba(148, 163, 184, 0.2)'
                                     }}
                                 >
                                     {link}
@@ -261,15 +268,31 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                             labelFormatter={(label) => `Time: ${label}s`}
                         />
                         <Legend wrapperStyle={{ color: '#94a3b8' }} />
-                        <Line
-                            type="monotone"
-                            dataKey="gbps"
-                            stroke={linkColors[linkId] || '#3b82f6'}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={{ r: 6, fill: '#8b5cf6' }}
-                            name={linkId}
-                        />
+                        {compareMode ? (
+                            selectedLinks.map(link => (
+                                <Line
+                                    key={link}
+                                    type="monotone"
+                                    data={allLinksData[link]}
+                                    dataKey="aggregated_gbps"
+                                    name={link}
+                                    stroke={getLinkColor(link)}
+                                    strokeWidth={2}
+                                    dot={false}
+                                    activeDot={{ r: 4 }}
+                                />
+                            ))
+                        ) : (
+                            <Line
+                                type="monotone"
+                                dataKey="gbps"
+                                stroke={getLinkColor(linkId)}
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={{ r: 6, fill: '#8b5cf6' }}
+                                name={linkId}
+                            />
+                        )}
                         <Brush
                             dataKey="time"
                             height={30}

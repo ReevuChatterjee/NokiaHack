@@ -1,8 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import pandas as pd
+import numpy as np
 import json
+import shutil
 from pathlib import Path
 
 app = FastAPI(title="Nokia Hackathon Day-3 API", version="1.0.0")
@@ -24,6 +26,115 @@ ARTIFACTS_DIR = BASE_DIR / "artifacts"
 # Cache for loaded data
 _data_cache = {}
 
+# Define critical files to backup/restore
+CRITICAL_FILES = [
+    (RESULTS_DIR / "topology.json"),
+    (RESULTS_DIR / "correlation_matrix.csv"),
+    (ARTIFACTS_DIR / "link_capacity_summary.csv"),
+    (ARTIFACTS_DIR / "link_traffic_timeseries.csv")
+]
+
+# Create backups on startup if they don't exist
+for file_path in CRITICAL_FILES:
+    backup_path = file_path.with_name(f"{file_path.stem}_original{file_path.suffix}")
+    if file_path.exists() and not backup_path.exists():
+        shutil.copy2(file_path, backup_path)
+        print(f"Created backup: {backup_path.name}")
+
+@app.post("/api/reset")
+async def reset_data():
+    """Restores the original datasets from backup files."""
+    try:
+        restored_count = 0
+        for file_path in CRITICAL_FILES:
+            backup_path = file_path.with_name(f"{file_path.stem}_original{file_path.suffix}")
+            if backup_path.exists():
+                shutil.copy2(backup_path, file_path)
+        # 3. Clear all caches to ensure UI sync
+        _data_cache.clear()
+        
+        return {"status": "success", "message": f"System reset complete. Restored {restored_count} files."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
+
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Accepts a user-uploaded traffic CSV, processes it, and updates system analysis.
+    Expected Schema: time_seconds, link_id, aggregated_gbps
+    """
+    try:
+        # 1. Save File
+        upload_path = ARTIFACTS_DIR / f"user_upload_{file.filename}"
+        with open(upload_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # 2. Load Data
+        df = pd.read_csv(upload_path)
+        required_cols = {"time_seconds", "link_id", "aggregated_gbps"}
+        if not required_cols.issubset(df.columns):
+            raise HTTPException(status_code=400, detail=f"CSV must contain columns: {required_cols}")
+
+        # 3. Process Capacity Summary
+        # Group by LinkID and calculate stats
+        capacity_stats = df.groupby('link_id')['aggregated_gbps'].agg(['mean', 'max', lambda x: x.quantile(0.95)]).reset_index()
+        capacity_stats.columns = ['link_id', 'avg_gbps', 'peak_gbps', 'p95_gbps']
+        
+        # Simple buffer logic
+        def calc_buffer(row):
+            burstiness = row['peak_gbps'] / (row['avg_gbps'] + 0.001)
+            savings_factor = 0.2 if burstiness > 1.5 else 0.05
+            return row['peak_gbps'] * (1 - savings_factor)
+
+        capacity_stats['capacity_no_buffer_gbps'] = capacity_stats['peak_gbps'] * 1.1 # 10% headroom
+        capacity_stats['capacity_with_buffer_gbps'] = capacity_stats.apply(calc_buffer, axis=1) * 1.1
+        
+        # Save Capacity CSV
+        capacity_stats.to_csv(ARTIFACTS_DIR / "link_capacity_summary.csv", index=False)
+        _data_cache.pop(str(ARTIFACTS_DIR / "link_capacity_summary.csv"), None)
+
+        # 4. Process Correlation Matrix
+        # Pivot: Time vs Link
+        pivot_df = df.pivot_table(index='time_seconds', columns='link_id', values='aggregated_gbps', fill_value=0)
+        corr_matrix = pivot_df.corr().fillna(0)
+        
+        # Save Correlation CSV
+        corr_matrix.to_csv(RESULTS_DIR / "correlation_matrix.csv")
+        _data_cache.pop(str(RESULTS_DIR / "correlation_matrix.csv"), None)
+
+        # 5. Process Topology (Inference)
+        unique_links = df['link_id'].unique()
+        topology = {"links": {}}
+        
+        for link_id in unique_links:
+            # Ensure link_id is string
+            l_id = str(link_id)
+            topology["links"][l_id] = {
+                "cells": [f"{l_id}_cell_{i}" for i in range(1, 4)],
+                "cell_count": 3,
+                "avg_throughput_mbps": float(capacity_stats[capacity_stats['link_id'] == link_id]['avg_gbps'].iloc[0] * 1000),
+                "peak_throughput_mbps": float(capacity_stats[capacity_stats['link_id'] == link_id]['peak_gbps'].iloc[0] * 1000),
+                "estimated_utilization": 0.5
+            }
+
+        with open(RESULTS_DIR / "topology.json", "w") as f:
+            json.dump(topology, f, indent=2)
+        _data_cache.pop(str(RESULTS_DIR / "topology.json"), None)
+
+        # 6. Save Raw Traffic for Charts
+        df.to_csv(ARTIFACTS_DIR / "link_traffic_timeseries.csv", index=False)
+        _data_cache.pop(str(ARTIFACTS_DIR / "link_traffic_timeseries.csv"), None)
+
+        # 6. Clear Cache
+        _data_cache.clear()
+        
+        return {"status": "success", "message": "Data processed. Dashboard updated.", "details": f"Processed {len(unique_links)} links."}
+
+    except Exception as e:
+        print(f"Upload Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 def load_json_file(filepath: Path):
     """Load JSON file with caching"""
@@ -79,47 +190,52 @@ async def get_topology():
         if not topology_file.exists():
             raise HTTPException(status_code=404, detail="Topology file not found")
         
+        # Fix Infinity/NaN values which are not JSON compliant
         data = load_json_file(topology_file)
-        
-        # Fix Infinity values which are not JSON compliant when re-serializing
-        import math
-        def fix_infinity(obj):
-            if isinstance(obj, dict):
-                return {k: fix_infinity(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [fix_infinity(item) for item in obj]
-            elif isinstance(obj, float) and math.isinf(obj):
-                return None  # Convert Infinity to None (null in JSON)
-            return obj
-        
-        return fix_infinity(data)
+        return fix_json_values(data)
     except Exception as e:
+        print(f"Topology API Error: {e}")
         raise HTTPException(status_code=500, detail=f"Error loading topology: {str(e)}")
+
+
+def load_csv(filepath: Path):
+    """Load CSV file with caching"""
+    cache_key = f"df_{filepath}"
+    if cache_key not in _data_cache:
+        _data_cache[cache_key] = pd.read_csv(filepath)
+    return _data_cache[cache_key]
+
+
+def fix_json_values(obj):
+    import math
+    if isinstance(obj, dict):
+        return {k: fix_json_values(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [fix_json_values(item) for item in obj]
+    elif isinstance(obj, float) and (math.isinf(obj) or math.isnan(obj)):
+        return None  # Convert Infinity/NaN to null
+    return obj
 
 
 @app.get("/api/correlation")
 async def get_correlation():
-    """
-    Returns the packet-loss correlation matrix.
-    
-    Returns:
-        JSON array with correlation data for all cells
-    """
     try:
-        correlation_file = RESULTS_DIR / "correlation_matrix.csv"
-        if not correlation_file.exists():
-            raise HTTPException(status_code=404, detail="Correlation file not found")
-        
-        # Load correlation matrix and convert to proper format
-        df = pd.read_csv(correlation_file, index_col=0)
-        
-        # Return as matrix format for heatmap
-        return {
-            "cells": df.columns.tolist(),
-            "matrix": df.values.tolist()
-        }
+        df = load_csv(RESULTS_DIR / "correlation_matrix.csv")
+        # Handle cases where the first column is the link/cell IDs
+        if "link_id" in df.columns:
+            cells = df["link_id"].astype(str).tolist()
+            matrix = df.drop(columns=["link_id"]).values.tolist()
+        elif df.columns[0] == "Unnamed: 0":
+            cells = df.iloc[:, 0].astype(str).tolist()
+            matrix = df.iloc[:, 1:].values.tolist()
+        else:
+            cells = df.columns.astype(str).tolist()
+            matrix = df.values.tolist()
+             
+        return fix_json_values({"cells": cells, "matrix": matrix})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading correlation: {str(e)}")
+        print(f"Correlation API Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/capacity-summary")
@@ -143,32 +259,27 @@ async def get_capacity_summary():
 @app.get("/api/link-traffic")
 async def get_link_traffic(link_id: str = None):
     """
-    Returns link traffic time-series data.
-    
-    Args:
-        link_id: Optional filter for specific link (Link_A, Link_B, or Link_C)
-    
-    Returns:
-        JSON array with traffic time-series data
+    Returns time-series traffic data for a specific link or all links.
     """
     try:
-        traffic_file = ARTIFACTS_DIR / "link_traffic_timeseries.csv"
-        if not traffic_file.exists():
-            raise HTTPException(status_code=404, detail="Traffic data file not found")
+        timeseries_file = ARTIFACTS_DIR / "link_traffic_timeseries.csv"
+        if not timeseries_file.exists():
+            raise HTTPException(status_code=404, detail="Traffic timeseries file not found")
         
-        df = pd.read_csv(traffic_file)
+        df = load_csv(timeseries_file)
         
-        # Filter by link_id if provided
         if link_id:
-            df = df[df['link_id'] == link_id]
-            if df.empty:
-                raise HTTPException(status_code=404, detail=f"No data found for link: {link_id}")
+            link_data = df[df['link_id'] == link_id]
+            if link_data.empty:
+                # Fallback: maybe it's mixed case or has different name
+                link_data = df[df['link_id'].astype(str).str.contains(link_id, case=False)]
+            
+            return link_data.to_dict(orient='records')
         
         return df.to_dict(orient='records')
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading traffic data: {str(e)}")
+        print(f"Traffic API Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/images/{filename}")

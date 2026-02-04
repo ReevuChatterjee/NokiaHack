@@ -1,0 +1,84 @@
+{
+  "topology_version": "1.0",
+  "inference_method": "correlation_based_clustering",
+  "inference_timestamp": "2026-02-03T17:27:37.217679",
+  "n_cells": 24,
+  "n_links": 3,
+  "quality_metrics": {
+    "silhouette_score": 0.28348518984471166,
+    "davies_bouldin_index": 1.068350902381208,
+    "within_cluster_correlation": 0.17169776307923101,
+    "within_cluster_std": 0.27319988928207223,
+    "between_cluster_correlation": -0.0036142323010412147,
+    "between_cluster_std": 0.004023869515606982,
+    "separation_ratio": Infinity
+  },
+  "links": {
+    "Link_A": {
+      "cells": [
+        4,
+        5,
+        12,
+        20
+      ],
+      "cell_count": 4,
+      "total_packets_lost": 48689,
+      "avg_loss_rate": 0.0005488080623455889,
+      "peak_loss_rate": 0.35443037974683544,
+      "congestion_events": 1970,
+      "avg_throughput_gbps": 0.530564504512683,
+      "peak_throughput_gbps": 3.8880000000311044,
+      "avg_throughput_mbps": 530.564504512683,
+      "peak_throughput_mbps": 3888.0000000311043,
+      "estimated_utilization": 1.0
+    },
+    "Link_B": {
+      "cells": [
+        1,
+        9,
+        17,
+        22
+      ],
+      "cell_count": 4,
+      "total_packets_lost": 52655,
+      "avg_loss_rate": 0.0006228948977347622,
+      "peak_loss_rate": 0.3409090909090909,
+      "congestion_events": 2233,
+      "avg_throughput_gbps": 0.532226158771151,
+      "peak_throughput_gbps": 3.8880000000311044,
+      "avg_throughput_mbps": 532.2261587711508,
+      "peak_throughput_mbps": 3888.0000000311043,
+      "estimated_utilization": 1.0
+    },
+    "Link_C": {
+      "cells": [
+        2,
+        3,
+        6,
+        7,
+        8,
+        10,
+        11,
+        13,
+        14,
+        15,
+        16,
+        18,
+        19,
+        21,
+        23,
+        24
+      ],
+      "cell_count": 16,
+      "total_packets_lost": 543374,
+      "avg_loss_rate": 0.001457584160093776,
+      "peak_loss_rate": 0.3707627118644068,
+      "congestion_events": 20947,
+      "avg_throughput_gbps": 0.45037355632087456,
+      "peak_throughput_gbps": 3.8880000000311044,
+      "avg_throughput_mbps": 450.373556320875,
+      "peak_throughput_mbps": 3888.0000000311043,
+      "estimated_utilization": 1.0
+    }
+  }
+}

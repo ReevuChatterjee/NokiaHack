@@ -55,7 +55,13 @@ export default function Home() {
             setTopology(topologyRes.data);
             setCorrelation(correlationRes.data);
             setCapacitySummary(capacityRes.data);
-            await fetchTrafficData('Link_A');
+
+            // Dynamically select the first available link
+            const firstLink = topologyRes.data.links ? Object.keys(topologyRes.data.links)[0] : null;
+            if (firstLink) {
+                setSelectedLink(firstLink);
+                await fetchTrafficData(firstLink);
+            }
             setLoading(false);
         } catch (err) {
             console.error('Error fetching data:', err);
@@ -70,6 +76,48 @@ export default function Home() {
             setTrafficData(response.data);
         } catch (err) {
             console.error(`Error fetching traffic data for ${linkId}:`, err);
+        }
+    };
+
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        setUploading(true);
+        try {
+            await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            alert('Upload successful! Dashboard updating...');
+            fetchData(); // Refresh data
+        } catch (err) {
+            console.error('Upload failed:', err);
+            alert('Upload failed: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const [resetting, setResetting] = useState(false);
+
+    const handleReset = async () => {
+        if (!confirm('Are you sure you want to revert to the original dataset? This will discard any uploaded data.')) return;
+
+        setResetting(true);
+        try {
+            await axios.post(`${API_BASE_URL}/api/reset`);
+            alert('System reset to original state.');
+            fetchData();
+        } catch (err) {
+            console.error('Reset failed:', err);
+            alert('Reset failed: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setResetting(false);
         }
     };
 
@@ -126,8 +174,21 @@ export default function Home() {
                     <p>Intelligent Fronthaul Optimization</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <label className="glass-btn" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
+                        {uploading ? '⏳ Uploading...' : '📤 Upload Data'}
+                        <input
+                            type="file"
+                            accept=".csv"
+                            style={{ display: 'none' }}
+                            onChange={handleFileUpload}
+                            disabled={uploading}
+                        />
+                    </label>
+                    <div className="glass-btn" onClick={handleReset} style={{ cursor: resetting ? 'wait' : 'pointer' }}>
+                        {resetting ? '⏳ Resetting...' : '↩️ Reset Data'}
+                    </div>
                     <div className="glass-btn" onClick={() => window.location.reload()}>
-                        🔄 Refresh System
+                        🔄 Refresh
                     </div>
                     <div className="badge" style={{
                         background: 'rgba(0, 242, 234, 0.1)',
@@ -233,7 +294,7 @@ export default function Home() {
                         📊 Traffic Load
                     </div>
                     <div className="tab-group">
-                        {['Link_A', 'Link_B', 'Link_C'].map(link => (
+                        {topology && Object.keys(topology.links).map(link => (
                             <button
                                 key={link}
                                 className={`tab-btn ${selectedLink === link ? 'active' : ''}`}

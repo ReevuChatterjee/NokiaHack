@@ -3,14 +3,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
 export default function CorrelationNetwork({ cells, matrix }) {
-    const [threshold, setThreshold] = useState(0.7);
+    const [threshold, setThreshold] = useState(0.3);
     const [selectedCell, setSelectedCell] = useState(null);
     const canvasRef = useRef(null);
     const wrapperRef = useRef(null);
 
     // Stats calculation
     const stats = useMemo(() => {
-        if (!cells || !matrix) return { linkCount: 0, avgCorrelation: 0, maxCorrelation: 0 };
+        if (!cells || !matrix || matrix.length === 0) return { linkCount: 0, avgCorrelation: 0, maxCorrelation: 0 };
         let count = 0;
         let sum = 0;
         let max = 0;
