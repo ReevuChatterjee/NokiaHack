@@ -40,9 +40,30 @@ for link in LINKS:
 df = pd.DataFrame(data)
 
 # Save to CSV
-output_path = r'd:\Project2\mock_traffic_data.csv'
+# Save to CSV
+output_path = r'd:\Project2\artifacts\link_traffic_timeseries.csv'
+df.to_csv(output_path, index=False)
+
 df.to_csv(output_path, index=False)
 
 print(f"Mock dataset generated at: {output_path}")
+
+# Generate Capacity Summary
+print("Generating capacity summary...")
+capacity_stats = df.groupby('link_id')['aggregated_gbps'].agg(['mean', 'max', lambda x: x.quantile(0.95)]).reset_index()
+capacity_stats.columns = ['link_id', 'avg_gbps', 'peak_gbps', 'p95_gbps']
+
+def calc_buffer(row):
+    burstiness = row['peak_gbps'] / (row['avg_gbps'] + 0.001)
+    savings_factor = 0.2 if burstiness > 1.5 else 0.05
+    return row['peak_gbps'] * (1 - savings_factor)
+
+capacity_stats['capacity_no_buffer_gbps'] = capacity_stats['peak_gbps'] * 1.1 # 10% headroom
+capacity_stats['capacity_with_buffer_gbps'] = capacity_stats.apply(calc_buffer, axis=1) * 1.1
+
+capacity_output_path = r'd:\Project2\artifacts\link_capacity_summary.csv'
+capacity_stats.to_csv(capacity_output_path, index=False)
+print(f"Capacity summary generated at: {capacity_output_path}")
+
 print(f"Total Rows: {len(df)}")
 print(f"Links: {LINKS}")

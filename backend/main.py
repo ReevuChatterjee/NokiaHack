@@ -6,8 +6,14 @@ import numpy as np
 import json
 import shutil
 from pathlib import Path
+import httpx
+from pydantic import BaseModel
+from typing import List, Optional
+
 
 app = FastAPI(title="Nokia Hackathon Day-3 API", version="1.0.0")
+
+# Trigger reload
 
 # Enable CORS for frontend communication
 app.add_middleware(
@@ -311,6 +317,65 @@ async def get_image(filename: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error serving image: {str(e)}")
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    model: str = "llama3"
+    context_data: Optional[dict] = None
+
+@app.post("/api/chat")
+async def chat_with_ai(request: ChatRequest):
+    """
+    Chat endpoint that forwards context-aware prompts to a local Ollama instance.
+    """
+    try:
+        # Construct system prompt with context
+        system_prompt = (
+            "You are an expert Network Operations Center (NOC) AI assistant for Nokia. "
+            "Your goal is to help engineers optimize fronthaul networks. "
+            "Keep answers concise, technical, and actionable. "
+        )
+        
+        if request.context_data:
+            system_prompt += f"\n\nCURRENT SYSTEM CONTEXT:\n{json.dumps(request.context_data, indent=2)}"
+
+        # Prepare messages for Ollama
+        ollama_messages = [{"role": "system", "content": system_prompt}]
+        for msg in request.messages:
+            ollama_messages.append({"role": msg.role, "content": msg.content})
+
+        # Call Ollama API
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    "http://127.0.0.1:11434/api/chat",
+                    json={
+                        "model": request.model,
+                        "messages": ollama_messages,
+                        "stream": False
+                    },
+                    timeout=60.0 # Longer timeout for LLM inference
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                return {
+                    "role": "assistant",
+                    "content": result.get("message", {}).get("content", "Error: No response from model.")
+                }
+            except httpx.ConnectError:
+                raise HTTPException(status_code=503, detail="Could not connect to Ollama (127.0.0.1:11434). Is it running?")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Chat API Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

@@ -7,9 +7,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import CorrelationHeatmap from '../components/CorrelationHeatmap';
 import TrafficChart from '../components/TrafficChart';
-import InsightsGenerator from '../components/InsightsGenerator';
+import AIChatPanel from '../components/AIChatPanel';
 import CapacityTable from '../components/CapacityTable';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import DashboardLoader from '../components/DashboardLoader';
 import { useDashboard } from '../context/DashboardContext';
 
 // Dynamically import network graphs
@@ -89,7 +90,7 @@ export default function Home() {
         }
     };
 
-    if (loading) return <div className="loading-overlay"><div className="loading">Initializing Dashboard...</div></div>;
+    if (loading) return <DashboardLoader />;
     if (error) return <div className="loading-overlay"><div className="error">{error}</div></div>;
 
     // Calculate simple KPIs
@@ -240,10 +241,12 @@ export default function Home() {
             <motion.div className="dashboard-panel panel-insights" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
-                        AI Recommendations
+                        NOC AI Assistant
                     </div>
                 </div>
-                {capacitySummary && <InsightsGenerator capacityData={capacitySummary} />}
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <AIChatPanel />
+                </div>
             </motion.div>
 
             {/* Panel 3: Correlation Analysis */}
