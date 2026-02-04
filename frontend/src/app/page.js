@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import CorrelationHeatmap from '../components/CorrelationHeatmap';
 import TrafficChart from '../components/TrafficChart';
 import InsightsGenerator from '../components/InsightsGenerator';
 import CapacityTable from '../components/CapacityTable';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import { useDashboard } from '../context/DashboardContext';
 
 // Dynamically import network graphs
 const NetworkGraph2D = dynamic(() => import('../components/NetworkGraph3D'), {
@@ -24,62 +26,28 @@ const CorrelationNetwork = dynamic(() => import('../components/CorrelationNetwor
 const API_BASE_URL = 'http://localhost:8000';
 
 export default function Home() {
-    const [topology, setTopology] = useState(null);
-    const [correlation, setCorrelation] = useState(null);
-    const [capacitySummary, setCapacitySummary] = useState(null);
-    const [trafficData, setTrafficData] = useState(null);
-    const [selectedLink, setSelectedLink] = useState('Link_A');
+    // Global State from Context
+    const {
+        topology,
+        correlation,
+        capacitySummary,
+        trafficData,
+        allLinksTraffic,
+        selectedLink,
+        setSelectedLink,
+        loading,
+        error,
+        fetchDashboardData
+    } = useDashboard();
+
+    // Local UI State
     const [correlationView, setCorrelationView] = useState('network');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    useEffect(() => {
-        if (selectedLink) {
-            fetchTrafficData(selectedLink);
-        }
-    }, [selectedLink]);
-
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            const [topologyRes, correlationRes, capacityRes] = await Promise.all([
-                axios.get(`${API_BASE_URL}/api/topology`),
-                axios.get(`${API_BASE_URL}/api/correlation`),
-                axios.get(`${API_BASE_URL}/api/capacity-summary`)
-            ]);
-
-            setTopology(topologyRes.data);
-            setCorrelation(correlationRes.data);
-            setCapacitySummary(capacityRes.data);
-
-            // Dynamically select the first available link
-            const firstLink = topologyRes.data.links ? Object.keys(topologyRes.data.links)[0] : null;
-            if (firstLink) {
-                setSelectedLink(firstLink);
-                await fetchTrafficData(firstLink);
-            }
-            setLoading(false);
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            setError('Failed to load system data.');
-            setLoading(false);
-        }
-    };
-
-    const fetchTrafficData = async (linkId) => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/link-traffic?link_id=${linkId}`);
-            setTrafficData(response.data);
-        } catch (err) {
-            console.error(`Error fetching traffic data for ${linkId}:`, err);
-        }
-    };
-
     const [uploading, setUploading] = useState(false);
+    const [resetting, setResetting] = useState(false);
+
+
+
+
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
@@ -94,7 +62,7 @@ export default function Home() {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Upload successful! Dashboard updating...');
-            fetchData(); // Refresh data
+            await fetchDashboardData(true); // Force refresh
         } catch (err) {
             console.error('Upload failed:', err);
             alert('Upload failed: ' + (err.response?.data?.detail || err.message));
@@ -103,7 +71,7 @@ export default function Home() {
         }
     };
 
-    const [resetting, setResetting] = useState(false);
+
 
     const handleReset = async () => {
         if (!confirm('Are you sure you want to revert to the original dataset? This will discard any uploaded data.')) return;
@@ -112,7 +80,7 @@ export default function Home() {
         try {
             await axios.post(`${API_BASE_URL}/api/reset`);
             alert('System reset to original state.');
-            fetchData();
+            await fetchDashboardData(true);
         } catch (err) {
             console.error('Reset failed:', err);
             alert('Reset failed: ' + (err.response?.data?.detail || err.message));
@@ -175,7 +143,7 @@ export default function Home() {
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <label className="glass-btn" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
-                        {uploading ? '⏳ Uploading...' : '📤 Upload Data'}
+                        {uploading ? 'Uploading...' : 'Upload Data'}
                         <input
                             type="file"
                             accept=".csv"
@@ -185,11 +153,14 @@ export default function Home() {
                         />
                     </label>
                     <div className="glass-btn" onClick={handleReset} style={{ cursor: resetting ? 'wait' : 'pointer' }}>
-                        {resetting ? '⏳ Resetting...' : '↩️ Reset Data'}
+                        {resetting ? 'Resetting...' : 'Reset Data'}
                     </div>
                     <div className="glass-btn" onClick={() => window.location.reload()}>
-                        🔄 Refresh
+                        Refresh
                     </div>
+                    <Link href="/dataset" className="glass-btn" style={{ textDecoration: 'none' }}>
+                        View Dataset
+                    </Link>
                     <div className="badge" style={{
                         background: 'rgba(0, 242, 234, 0.1)',
                         color: 'var(--accent-primary)',
@@ -206,6 +177,28 @@ export default function Home() {
                     </div>
                 </div>
             </motion.header>
+
+            {/* System Summary */}
+            <motion.div
+                variants={itemVariants}
+                style={{
+                    gridColumn: 'span 12',
+                    padding: '0.75rem 1.5rem',
+                    background: 'rgba(59, 130, 246, 0.05)',
+                    borderLeft: '3px solid rgba(59, 130, 246, 0.6)',
+                    borderRadius: '6px',
+                    marginBottom: '1.5rem'
+                }}
+            >
+                <p style={{
+                    margin: 0,
+                    color: '#cbd5e1',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.5'
+                }}>
+                    <strong>System Overview:</strong> Automatically infers fronthaul topology from packet-loss correlation and computes buffer-aware Ethernet capacity to minimize over-provisioning while maintaining QoS.
+                </p>
+            </motion.div>
 
             {/* KPI Cards */}
             <motion.div className="kpi-grid" variants={itemVariants}>
@@ -237,7 +230,7 @@ export default function Home() {
             <motion.div className="dashboard-panel panel-topology" variants={itemVariants}>
                 <div className="panel-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                     <div className="panel-title">
-                        🌐 Live Topology
+                        Live Topology
                     </div>
                 </div>
                 {topology ? <NetworkGraph2D topology={topology} /> : <LoadingSkeleton type="chart" />}
@@ -247,7 +240,7 @@ export default function Home() {
             <motion.div className="dashboard-panel panel-insights" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
-                        🧠 AI Recommendations
+                        AI Recommendations
                     </div>
                 </div>
                 {capacitySummary && <InsightsGenerator capacityData={capacitySummary} />}
@@ -257,7 +250,7 @@ export default function Home() {
             <motion.div className="dashboard-panel panel-correlation" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
-                        🔗 Correlation Matrix
+                        Correlation Matrix
                     </div>
                     <div className="tab-group">
                         <button
@@ -291,7 +284,7 @@ export default function Home() {
             <motion.div className="dashboard-panel panel-traffic" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
-                        📊 Traffic Load
+                        Traffic Load
                     </div>
                     <div className="tab-group">
                         {topology && Object.keys(topology.links).map(link => (
@@ -305,14 +298,17 @@ export default function Home() {
                         ))}
                     </div>
                 </div>
-                {trafficData && <TrafficChart data={trafficData} linkId={selectedLink} />}
+                {trafficData && <TrafficChart data={trafficData} linkId={selectedLink} allLinksData={allLinksTraffic} />}
             </motion.div>
 
             {/* Panel 5: Capacity Table */}
             <motion.div className="dashboard-panel panel-capacity" variants={itemVariants}>
                 <div className="panel-header">
                     <div className="panel-title">
-                        📋 Capacity Planning
+                        Capacity Planning
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                        Buffer size assumed: 4 symbols (143 µs)
                     </div>
                 </div>
                 {capacitySummary && <CapacityTable data={capacitySummary} />}

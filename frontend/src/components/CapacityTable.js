@@ -108,7 +108,7 @@ export default function CapacityTable({ data }) {
             }}>
                 <input
                     type="text"
-                    placeholder="🔍 Filter by link ID..."
+                    placeholder="Filter by link ID..."
                     value={filterText}
                     onChange={(e) => setFilterText(e.target.value)}
                     style={{
@@ -127,7 +127,7 @@ export default function CapacityTable({ data }) {
                     className="link-button active"
                     style={{ padding: '0.75rem 1.5rem' }}
                 >
-                    📥 Export CSV
+                    Export CSV
                 </button>
             </div>
 

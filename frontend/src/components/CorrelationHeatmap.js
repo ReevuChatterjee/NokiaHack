@@ -3,16 +3,17 @@
 import React, { useState } from 'react';
 
 export default function CorrelationHeatmap({ cells, matrix }) {
+    // Early return MUST come before any hooks to avoid React hooks violation
+    if (!cells || !matrix || matrix.length === 0) {
+        return <div className="loading">Loading correlation data...</div>;
+    }
+
     const [zoom, setZoom] = useState(1);
     const [threshold, setThreshold] = useState(-1);
     const [selectedCell, setSelectedCell] = useState(null);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-
-    if (!cells || !matrix || matrix.length === 0) {
-        return <div className="loading">Loading correlation data...</div>;
-    }
 
     // Find min and max for color scaling
     const flatValues = matrix.flat().filter(v => !isNaN(v) && v !== 1.0);
@@ -274,7 +275,7 @@ export default function CorrelationHeatmap({ cells, matrix }) {
             }}>
                 <div style={{ marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                     <h3 style={{ margin: 0, fontSize: '1rem', color: '#f8fafc' }}>
-                        📊 Correlation Details
+                        Correlation Details
                     </h3>
                     <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
                         {activeCellName ? `Analysis for ${activeCellName}` : 'Hover over a cell'}
@@ -319,7 +320,7 @@ export default function CorrelationHeatmap({ cells, matrix }) {
 
                         <div style={{ marginTop: '1.5rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                💡 <strong>Insight</strong>
+                                <strong>Insight</strong>
                             </div>
                             <p style={{ fontSize: '0.8rem', margin: 0, color: '#bfdbfe', lineHeight: '1.4' }}>
                                 {cellInsights[0]?.value > 0.8

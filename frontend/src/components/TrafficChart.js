@@ -71,6 +71,27 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
         };
     }, [filteredData]);
 
+    // Prepare comparison data if in compare mode
+    const comparisonData = useMemo(() => {
+        if (!compareMode || !allLinksData) return null;
+
+        const mergedData = {};
+
+        selectedLinks.forEach(link => {
+            if (allLinksData[link]) {
+                allLinksData[link].forEach(item => {
+                    const time = parseFloat(item.time_seconds).toFixed(2);
+                    if (!mergedData[time]) {
+                        mergedData[time] = { time };
+                    }
+                    mergedData[time][link] = parseFloat(item.aggregated_gbps);
+                });
+            }
+        });
+
+        return Object.values(mergedData).sort((a, b) => parseFloat(a.time) - parseFloat(b.time));
+    }, [compareMode, allLinksData, selectedLinks]);
+
     // Consistent color generator based on string hash
     const getLinkColor = (id) => {
         const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
@@ -113,7 +134,7 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                             checked={compareMode}
                             onChange={(e) => setCompareMode(e.target.checked)}
                         />
-                        📊 Compare
+                        Compare
                     </label>
                     {compareMode && allLinksData && (
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
@@ -139,7 +160,7 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                 {/* Aggregation */}
                 <div>
                     <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>
-                        ⏱️ Bin
+                        Bin
                     </label>
                     <select
                         value={aggregation}
@@ -169,7 +190,7 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                             checked={showStats}
                             onChange={(e) => setShowStats(e.target.checked)}
                         />
-                        📈 Stats
+                        Stats
                     </label>
                 </div>
             </div>
@@ -183,7 +204,7 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                 marginBottom: '0.5rem'
             }}>
                 <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '0.25rem' }}>
-                    🎯 Range: {timeRange[0]}% - {timeRange[1]}%
+                    Range: {timeRange[0]}% - {timeRange[1]}%
                 </label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <input
@@ -244,42 +265,62 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
             <div style={{ width: '100%', flex: 1, minHeight: 200, position: 'relative' }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                        data={filteredData}
-                        margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+                        data={compareMode && comparisonData ? comparisonData : filteredData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
                     >
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" vertical={false} />
                         <XAxis
                             dataKey="time"
                             stroke="#94a3b8"
-                            label={{ value: 'Time (seconds)', position: 'insideBottom', offset: -5, fill: '#94a3b8' }}
+                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            tickLine={{ stroke: '#94a3b8' }}
+                            axisLine={{ stroke: '#94a3b8' }}
+                            minTickGap={30}
                         />
                         <YAxis
                             stroke="#94a3b8"
-                            label={{ value: 'Traffic (Gbps)', angle: -90, position: 'insideLeft', fill: '#94a3b8' }}
+                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            tickLine={{ stroke: '#94a3b8' }}
+                            axisLine={{ stroke: '#94a3b8' }}
+                            label={{
+                                value: 'Traffic (Gbps)',
+                                angle: -90,
+                                position: 'insideLeft',
+                                style: { textAnchor: 'middle', fill: '#94a3b8', fontSize: 12 },
+                                offset: 0
+                            }}
                         />
                         <Tooltip
                             contentStyle={{
                                 backgroundColor: 'rgba(15, 23, 42, 0.95)',
                                 border: '1px solid rgba(148, 163, 184, 0.2)',
                                 borderRadius: '8px',
-                                color: '#f1f5f9'
+                                color: '#f1f5f9',
+                                padding: '8px 12px'
                             }}
                             formatter={(value) => [`${parseFloat(value).toFixed(2)} Gbps`, 'Traffic']}
                             labelFormatter={(label) => `Time: ${label}s`}
+                            cursor={{ stroke: 'rgba(139, 92, 246, 0.5)', strokeWidth: 1 }}
                         />
-                        <Legend wrapperStyle={{ color: '#94a3b8' }} />
-                        {compareMode ? (
+                        <Legend
+                            verticalAlign="top"
+                            height={36}
+                            wrapperStyle={{ color: '#94a3b8', paddingTop: '0px' }}
+                            iconType="circle"
+                        />
+                        {compareMode && comparisonData ? (
+                            // In compare mode, render a Line for each selected link
                             selectedLinks.map(link => (
                                 <Line
                                     key={link}
                                     type="monotone"
-                                    data={allLinksData[link]}
-                                    dataKey="aggregated_gbps"
+                                    dataKey={link}
                                     name={link}
                                     stroke={getLinkColor(link)}
                                     strokeWidth={2}
                                     dot={false}
                                     activeDot={{ r: 4 }}
+                                    connectNulls={true}
                                 />
                             ))
                         ) : (
@@ -298,6 +339,8 @@ export default function TrafficChart({ data, linkId, allLinksData }) {
                             height={30}
                             stroke="#8b5cf6"
                             fill="rgba(139, 92, 246, 0.1)"
+                            tickFormatter={() => ''}
+                            y={undefined}
                         />
                     </LineChart>
                 </ResponsiveContainer>

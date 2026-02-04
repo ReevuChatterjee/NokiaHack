@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
 export default function CorrelationNetwork({ cells, matrix }) {
-    const [threshold, setThreshold] = useState(0.3);
+    const [threshold, setThreshold] = useState(0.1);
     const [selectedCell, setSelectedCell] = useState(null);
     const canvasRef = useRef(null);
     const wrapperRef = useRef(null);
@@ -192,12 +192,12 @@ export default function CorrelationNetwork({ cells, matrix }) {
             }}>
                 <div style={{ marginBottom: '0.5rem' }}>
                     <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                        <span>🎯 Min Strength: {threshold.toFixed(2)}</span>
+                        <span>Min Strength: {threshold.toFixed(2)}</span>
                         <span>{stats.linkCount} Links</span>
                     </label>
                     <input
                         type="range"
-                        min="0.5"
+                        min="0.0"
                         max="0.99"
                         step="0.01"
                         value={threshold}
