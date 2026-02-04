@@ -18,6 +18,7 @@ A real-time, AI-powered dashboard for monitoring, analyzing, and optimizing 5G f
 
 ### Frontend
 - **Framework**: [Next.js](https://nextjs.org/) (React)
+- **Mobile**: [Capacitor](https://capacitorjs.com/) for iOS/Android
 - **Styling**: CSS Modules, Glassmorphism UI
 - **Visualization**: Recharts, React-Force-Graph-3D, HTML5 Canvas
 - **Animations**: Framer Motion
@@ -88,6 +89,33 @@ ollama pull llama3
 2. **Upload Data**: Use the upload button to ingest new traffic CSV files.
 3. **AI Chat**: Open the "AI Assistant" panel to ask questions like *"Which link is congested?"* or *"Analyze traffic patterns for Link A"*.
 4. **Mobile View**: Access the dashboard on your phone for a responsive monitoring experience.
+
+---
+
+## 📱 Mobile App
+
+The dashboard is also available as a native mobile app for Android and iOS, powered by Capacitor.
+
+### Quick Start
+```bash
+cd frontend
+npm install
+npm run export
+npx cap add android    # For Android
+npx cap open android   # Opens in Android Studio
+```
+
+**For detailed instructions**, see [MOBILE_BUILD.md](MOBILE_BUILD.md).
+
+### Features
+- ✅ Native Android and iOS support
+- ✅ Optimized mobile UI with touch-friendly controls
+- ✅ Safe area support for notched devices
+- ✅ Dark mode status bar integration
+- ✅ Network connectivity detection
+- ✅ Responsive layouts for all screen sizes
+
+---
 
 ## 📂 Project Structure
 

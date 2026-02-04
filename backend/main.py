@@ -18,7 +18,7 @@ app = FastAPI(title="Nokia Hackathon Day-3 API", version="1.0.0")
 # Enable CORS for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -350,17 +350,19 @@ async def chat_with_ai(request: ChatRequest):
             ollama_messages.append({"role": msg.role, "content": msg.content})
 
         # Call Ollama API
+        print(f"Sending request to Ollama with model: {request.model}")
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    "http://127.0.0.1:11434/api/chat",
+                    "http://localhost:11434/api/chat",
                     json={
                         "model": request.model,
                         "messages": ollama_messages,
                         "stream": False
                     },
-                    timeout=60.0 # Longer timeout for LLM inference
+                    timeout=60.0 
                 )
+                print(f"Ollama Response Status: {response.status_code}")
                 response.raise_for_status()
                 result = response.json()
                 
@@ -368,8 +370,12 @@ async def chat_with_ai(request: ChatRequest):
                     "role": "assistant",
                     "content": result.get("message", {}).get("content", "Error: No response from model.")
                 }
-            except httpx.ConnectError:
-                raise HTTPException(status_code=503, detail="Could not connect to Ollama (127.0.0.1:11434). Is it running?")
+            except httpx.ConnectError as e:
+                print(f"Ollama Connection Error: {e}")
+                raise HTTPException(status_code=503, detail=f"Could not connect to Ollama. Error: {str(e)}")
+            except Exception as e:
+                print(f"Ollama General Error: {e}")
+                raise HTTPException(status_code=500, detail=f"Ollama Error: {str(e)}")
             
     except HTTPException:
         raise
