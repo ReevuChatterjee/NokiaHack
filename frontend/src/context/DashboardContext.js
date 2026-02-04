@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 const DashboardContext = createContext();
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = config.apiBaseUrl;
 
 export function DashboardProvider({ children }) {
     // Global Data State

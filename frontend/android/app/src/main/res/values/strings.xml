@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nokia NOC</string>
+    <string name="title_activity_main">Nokia NOC</string>
+    <string name="package_name">com.nokia.noc</string>
+    <string name="custom_url_scheme">com.nokia.noc</string>
+</resources>

@@ -57,8 +57,13 @@ export default function CorrelationNetwork({ cells, matrix }) {
         const dpr = window.devicePixelRatio || 1;
         canvas.width = width * dpr;
         canvas.height = height * dpr;
-        // canvas.style.width/height is handled by CSS (width: 100%) to avoid ResizeObserver loop
         ctx.scale(dpr, dpr);
+
+        // Mobile Adjustment
+        const isSmallScreen = width < 450;
+        const fontBase = isSmallScreen ? 14 : 11;
+        const nodeRadius = isSmallScreen ? 8 : 6;
+        const labelOffset = isSmallScreen ? 12 : 8;
 
         // Layout Config
         const centerX = width / 2;
@@ -106,17 +111,12 @@ export default function CorrelationNetwork({ cells, matrix }) {
 
                     // Color ramp
                     let color;
-                    if (val >= 0.9) color = `rgba(239, 68, 68, ${opacity})`;   // Red
-                    else if (val >= 0.8) color = `rgba(249, 115, 22, ${opacity})`; // Orange
-                    else if (val >= 0.7) color = `rgba(234, 179, 8, ${opacity})`;  // Yellow
-                    else color = `rgba(59, 130, 246, ${opacity})`;                 // Blue (Default Theme)
-
-                    // Theme Override (Cyan/Violet)
                     if (val >= 0.9) color = `rgba(6, 182, 212, ${opacity})`;    // Cyan (High)
                     else if (val >= 0.7) color = `rgba(139, 92, 246, ${opacity})`; // Violet (Med)
+                    else color = `rgba(59, 130, 246, ${opacity})`;                 // Blue
 
                     ctx.strokeStyle = color;
-                    ctx.lineWidth = selectedCell && opacity > 0.5 ? 2 : 1;
+                    ctx.lineWidth = selectedCell && opacity > 0.5 ? 3 : (isSmallScreen ? 1.5 : 1);
                     ctx.stroke();
                 }
             }
@@ -131,16 +131,15 @@ export default function CorrelationNetwork({ cells, matrix }) {
             // Dim logic
             let alpha = 1;
             if (selectedCell && !isSelected) {
-                // Check correlation in matrix (symmetric)
                 const idx1 = nodes.find(n => n.id === selectedCell).index;
                 const idx2 = node.index;
-                const corr = Math.max(matrix[idx1][idx2], matrix[idx2][idx1]); // Ensure access
+                const corr = Math.max(matrix[idx1][idx2], matrix[idx2][idx1]);
                 if (corr < threshold) alpha = 0.2;
             }
 
             // Dot
             ctx.beginPath();
-            ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
+            ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI);
             ctx.fillStyle = isSelected ? '#06b6d4' : `rgba(139, 92, 246, ${alpha})`;
             ctx.fill();
 
@@ -154,9 +153,9 @@ export default function CorrelationNetwork({ cells, matrix }) {
             ctx.rotate(node.angle);
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = isSelected ? '#fff' : `rgba(255, 255, 255, ${alpha})`;
-            ctx.font = isSelected ? 'bold 12px Inter' : '11px Inter';
-            ctx.fillText(`  ${node.id}`, 8, 0); // Offset from dot
+            ctx.fillStyle = isSelected ? '#fff' : `rgba(255, 255, 255, ${alpha + 0.3})`; // Higher contrast text
+            ctx.font = isSelected ? `bold ${fontBase + 2}px Inter` : `${fontBase}px Inter`;
+            ctx.fillText(`  ${node.id}`, labelOffset, 0);
             ctx.restore();
         });
 

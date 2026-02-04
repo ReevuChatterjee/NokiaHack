@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useDashboard } from '../context/DashboardContext';
 
-const API_BASE_URL = 'http://localhost:8000';
+import config from '../config';
+
+const API_BASE_URL = config.apiBaseUrl;
 
 export default function AIChatPanel() {
     const { topology, capacitySummary, trafficData } = useDashboard();

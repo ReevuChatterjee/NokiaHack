@@ -17,6 +17,12 @@
   --text-muted: #64748b;
   --border-color: rgba(255, 255, 255, 0.08);
   --glass-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+  /* Safe area insets for notched devices (iOS) */
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-right: env(safe-area-inset-right);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-left: env(safe-area-inset-left);
 }
 
 * {
@@ -386,4 +392,177 @@ tr:hover td {
   background: rgba(16, 185, 129, 0.1);
   color: var(--accent-success);
   border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* ===========================
+   MOBILE OPTIMIZATIONS
+   =========================== */
+
+/* Touch-friendly button sizes (minimum 44x44px for iOS guidelines) */
+@media (max-width: 768px) {
+
+  .glass-btn,
+  .tab-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+  }
+
+  /* Improve tap targets for header buttons */
+  .header-section button,
+  .header-section a,
+  .header-section label {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Make panel headers more readable on mobile */
+  .panel-title {
+    font-size: 1rem;
+  }
+
+  /* Optimize table for mobile scrolling */
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Better font rendering on mobile */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Prevent text inflation on mobile */
+  body {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Safe area padding for notched devices */
+  .dashboard-container {
+    padding-top: max(1rem, var(--safe-area-inset-top));
+    padding-right: max(1rem, var(--safe-area-inset-right));
+    padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+    padding-left: max(1rem, var(--safe-area-inset-left));
+  }
+
+  /* Optimize header for safe areas */
+  .header-section {
+    margin-top: var(--safe-area-inset-top);
+  }
+
+  /* Better touch scrolling for panels */
+  .dashboard-panel {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Make tab buttons easier to tap on mobile */
+  .tab-group {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    flex: 1 1 auto;
+    min-width: 60px;
+  }
+
+  /* Improve card spacing on small screens */
+  .kpi-card {
+    padding: 1.25rem;
+  }
+
+  .kpi-value {
+    font-size: 1.75rem;
+  }
+}
+
+/* Extra small devices (phones in portrait mode) */
+@media (max-width: 480px) {
+  .header-title h1 {
+    font-size: 1.25rem;
+  }
+
+  .header-title p {
+    font-size: 0.75rem;
+  }
+
+  /* Stack header buttons vertically on very small screens */
+  .header-section>div {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .header-section button,
+  .header-section a,
+  .header-section label {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Smaller badges on mobile */
+  .badge {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+
+  /* Reduce panel padding further on very small screens */
+  .dashboard-panel {
+    padding: 0.75rem;
+  }
+
+  .kpi-grid {
+    gap: 0.75rem;
+  }
+
+  .dashboard-container {
+    gap: 0.75rem;
+  }
+}
+
+/* Landscape mode optimizations */
+@media (max-width: 926px) and (orientation: landscape) {
+
+  .panel-topology,
+  .panel-insights {
+    max-height: 80vh;
+  }
+
+  .dashboard-container {
+    padding: 0.75rem;
+  }
+}
+
+/* High contrast mode support for accessibility */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-btn,
+  .dashboard-panel {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode optimization (Capacitor apps often run in dark mode) */
+@media (prefers-color-scheme: dark) {
+  /* Already optimized for dark by default, but can add overrides if needed */
 }
